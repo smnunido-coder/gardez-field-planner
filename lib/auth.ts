@@ -1,0 +1,92 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { getStaff } from "@/lib/queries";
+import type { Staff } from "@/lib/types";
+
+const COOKIE = "gardez_session";
+const MAX_AGE_SECONDS = 60 * 24 * 60 * 60;
+
+type SessionPayload = { staffId: string; exp: number };
+
+function secret(): string {
+  const value = process.env.SESSION_SECRET;
+  if (value) return value;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Set SESSION_SECRET before running the planner in production. See the README.");
+  }
+  return "gardez-dev-session-secret-change-me";
+}
+
+function cookieBase() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  };
+}
+
+function sign(staffId: string): string {
+  const body = Buffer.from(
+    JSON.stringify({ staffId, exp: Date.now() + MAX_AGE_SECONDS * 1000 } satisfies SessionPayload),
+    "utf8",
+  ).toString("base64url");
+  const signature = createHmac("sha256", secret()).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
+function readToken(token: string): SessionPayload | null {
+  const [body, signature] = token.split(".");
+  if (!body || !signature) return null;
+  const expected = createHmac("sha256", secret()).update(body).digest("base64url");
+  const left = Buffer.from(signature);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length || !timingSafeEqual(left, right)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
+    if (!parsed.staffId || typeof parsed.exp !== "number" || parsed.exp < Date.now()) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSession(staffId: string): Promise<void> {
+  const jar = await cookies();
+  jar.set(COOKIE, sign(staffId), { ...cookieBase(), maxAge: MAX_AGE_SECONDS });
+}
+
+export async function clearSession(): Promise<void> {
+  const jar = await cookies();
+  jar.set(COOKIE, "", { ...cookieBase(), maxAge: 0 });
+}
+
+export async function getOptionalUser(): Promise<Staff | null> {
+  const jar = await cookies();
+  const token = jar.get(COOKIE)?.value;
+  if (!token) return null;
+  const session = readToken(token);
+  if (!session) {
+    await clearSession();
+    return null;
+  }
+  const staff = await getStaff(session.staffId);
+  if (!staff || !staff.active) {
+    await clearSession();
+    return null;
+  }
+  return staff;
+}
+
+export async function getCurrentUser(): Promise<Staff> {
+  const user = await getOptionalUser();
+  if (!user) redirect("/login");
+  return user;
+}
+
+export async function requireAdmin(): Promise<Staff> {
+  const user = await getCurrentUser();
+  if (!user.isAdmin) redirect("/");
+  return user;
+}
