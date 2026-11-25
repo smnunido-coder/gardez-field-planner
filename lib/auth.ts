@@ -60,8 +60,12 @@ export async function setSession(staffId: string): Promise<void> {
 }
 
 export async function clearSession(): Promise<void> {
-  const jar = await cookies();
-  jar.set(COOKIE, "", { ...cookieBase(), maxAge: 0 });
+  try {
+    const jar = await cookies();
+    jar.set(COOKIE, "", { ...cookieBase(), maxAge: 0 });
+  } catch {
+    // A page render cannot clear a cookie. The next sign-in replaces it.
+  }
 }
 
 export async function getOptionalUser(): Promise<Staff | null> {
