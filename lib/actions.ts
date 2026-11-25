@@ -38,7 +38,12 @@ export async function login(formData: FormData) {
   const cleaned = normalizeNameInput(raw);
   if (!cleaned) redirect("/login?error=empty");
 
-  const staff = await listStaff();
+  let staff;
+  try {
+    staff = await listStaff();
+  } catch {
+    redirect("/login?error=database");
+  }
   const any = matchStaff(staff, cleaned, { includeInactive: true });
   const matches = any.filter((person) => person.active);
   if (any.length > 0 && matches.length === 0) {

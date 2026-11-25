@@ -19,4 +19,5 @@ export const ERRORS: Record<string, string> = {
   empty: "Type your last name.",
   none: "No one on the staff list has that last name.",
   inactive: "That name is inactive. Ask Samoon to turn it back on.",
+  database: "The site cannot reach the database yet. The Turso address and token need to be saved, then the site deployed again.",
 };

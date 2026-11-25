@@ -103,7 +103,7 @@ const globalForDb = globalThis as unknown as {
 
 function databaseUrl(): string {
   if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL;
-  if (process.env.VERCEL) {
+  if (process.env.VERCEL || process.env.NETLIFY) {
     throw new Error(
       "TURSO_DATABASE_URL is not set. Create a Turso database and add it to the host before opening the planner. See the README.",
     );
