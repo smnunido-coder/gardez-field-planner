@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/input";
+import { connection } from "next/server";
 import { formatMonthTick, kabulToday, monthsBetween } from "@/lib/dates";
 import { statusClass, statusColor } from "@/lib/labels";
 import { listWorkplans } from "@/lib/queries";
@@ -34,7 +35,8 @@ async function Workplans({
   const all = partner || status ? await listWorkplans() : items;
   const partners = [...new Set(all.map((item) => item.partner))];
   const statuses = [...new Set(all.map((item) => item.status))];
-  const currentMonth = kabulToday().slice(0, 7);
+  await connection();
+  const currentMonth = kabulToday(new Date()).slice(0, 7);
   const span = items.reduce(
     (range, item) => ({
       start: !range.start || item.startMonth < range.start ? item.startMonth : range.start,

@@ -1,16 +1,18 @@
 import { getOptionalUser } from "@/lib/auth";
+import { connection } from "next/server";
 import { kabulToday, weekDates, weekStartFor } from "@/lib/dates";
 import { planRows, toCsv, toExcelXml } from "@/lib/export";
 import { matchingDays, type WeekFilters } from "@/lib/filters";
 import { getWorkDays, listStaff, plansBetween } from "@/lib/queries";
 
 export async function GET(request: Request) {
+  await connection();
   const user = await getOptionalUser();
   if (!user) return new Response("Sign in required", { status: 401 });
 
   const url = new URL(request.url);
   const workDays = await getWorkDays();
-  const weekStart = weekStartFor(url.searchParams.get("week") || url.searchParams.get("on") || kabulToday(), workDays);
+  const weekStart = weekStartFor(url.searchParams.get("week") || url.searchParams.get("on") || kabulToday(new Date()), workDays);
   const dates = weekDates(weekStart, workDays);
   const filters: WeekFilters = {
     staffId: url.searchParams.get("staff") ?? "",

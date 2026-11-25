@@ -24,7 +24,7 @@ export function addDays(iso: string, amount: number): string {
 }
 
 /** Calendar date in Afghanistan (UTC+4:30, no daylight saving). */
-export function kabulToday(now = new Date()): string {
+export function kabulToday(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kabul",
     year: "numeric",

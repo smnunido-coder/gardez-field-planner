@@ -8,6 +8,7 @@ import { fieldClass } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { saveWeek } from "@/lib/actions";
 import { getCurrentUser } from "@/lib/auth";
+import { connection } from "next/server";
 import { addDays, canEditWeek, formatDayShort, formatWeekRange, kabulToday, weekDates, weekStartFor } from "@/lib/dates";
 import { ACTIVITIES, PROVINCES, activityLabel } from "@/lib/labels";
 import { getWorkDays, listProjects, listStaff, plansBetween } from "@/lib/queries";
@@ -33,9 +34,10 @@ async function PlanForm({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  await connection();
   const user = await getCurrentUser();
   const workDays = await getWorkDays();
-  const today = kabulToday();
+  const today = kabulToday(new Date());
   const weekStart = weekStartFor(one(params.week) || today, workDays);
   const dates = weekDates(weekStart, workDays);
   const staff = await listStaff();

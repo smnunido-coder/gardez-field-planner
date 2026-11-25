@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/input";
+import { connection } from "next/server";
 import { addDays, formatDate, formatDayShort, formatWeekRange, kabulToday, weekDates, weekStartFor } from "@/lib/dates";
 import { hrefWith, matchingDays, visibleStaff, type WeekFilters } from "@/lib/filters";
 import { activityLabel, chipClass, isFieldActivity, statusClass } from "@/lib/labels";
@@ -34,9 +35,10 @@ async function Dashboard({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  await connection();
   const user = await getCurrentUser();
   const workDays = await getWorkDays();
-  const today = kabulToday();
+  const today = kabulToday(new Date());
   const requested = one(params.on) || one(params.week) || today;
   const weekStart = weekStartFor(requested, workDays);
   const dates = weekDates(weekStart, workDays);

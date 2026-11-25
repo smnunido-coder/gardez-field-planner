@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { getStaff } from "@/lib/queries";
 import type { Staff } from "@/lib/types";
 
@@ -27,16 +28,16 @@ function cookieBase() {
   };
 }
 
-function sign(staffId: string): string {
+function sign(staffId: string, now: number): string {
   const body = Buffer.from(
-    JSON.stringify({ staffId, exp: Date.now() + MAX_AGE_SECONDS * 1000 } satisfies SessionPayload),
+    JSON.stringify({ staffId, exp: now + MAX_AGE_SECONDS * 1000 } satisfies SessionPayload),
     "utf8",
   ).toString("base64url");
   const signature = createHmac("sha256", secret()).update(body).digest("base64url");
   return `${body}.${signature}`;
 }
 
-function readToken(token: string): SessionPayload | null {
+function readToken(token: string, now: number): SessionPayload | null {
   const [body, signature] = token.split(".");
   if (!body || !signature) return null;
   const expected = createHmac("sha256", secret()).update(body).digest("base64url");
@@ -45,7 +46,7 @@ function readToken(token: string): SessionPayload | null {
   if (left.length !== right.length || !timingSafeEqual(left, right)) return null;
   try {
     const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
-    if (!parsed.staffId || typeof parsed.exp !== "number" || parsed.exp < Date.now()) return null;
+    if (!parsed.staffId || typeof parsed.exp !== "number" || parsed.exp < now) return null;
     return parsed;
   } catch {
     return null;
@@ -53,8 +54,9 @@ function readToken(token: string): SessionPayload | null {
 }
 
 export async function setSession(staffId: string): Promise<void> {
+  await connection();
   const jar = await cookies();
-  jar.set(COOKIE, sign(staffId), { ...cookieBase(), maxAge: MAX_AGE_SECONDS });
+  jar.set(COOKIE, sign(staffId, Date.now()), { ...cookieBase(), maxAge: MAX_AGE_SECONDS });
 }
 
 export async function clearSession(): Promise<void> {
@@ -63,10 +65,11 @@ export async function clearSession(): Promise<void> {
 }
 
 export async function getOptionalUser(): Promise<Staff | null> {
+  await connection();
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
   if (!token) return null;
-  const session = readToken(token);
+  const session = readToken(token, Date.now());
   if (!session) {
     await clearSession();
     return null;

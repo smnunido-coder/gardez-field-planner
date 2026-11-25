@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireAdmin, setSession, clearSession, getCurrentUser } from "@/lib/auth";
+import { connection } from "next/server";
 import { AFGHAN_WEEK, canEditWeek, kabulToday, normalizeWorkDays, weekDates, weekStartFor } from "@/lib/dates";
 import { ACTIVITIES, MISSION_STATUSES, PROVINCES } from "@/lib/labels";
 import { loginKey, matchStaff, normalizeNameInput } from "@/lib/names";
@@ -68,7 +69,8 @@ export async function saveWeek(formData: FormData) {
   if (!dates.length || dates[0] !== weekStart || weekStartFor(weekStart, workDays) !== weekStart) {
     fail(`/plan?week=${encodeURIComponent(weekStart)}`, "week");
   }
-  const today = kabulToday();
+  await connection();
+  const today = kabulToday(new Date());
   if (!canEditWeek(dates, today, user.isAdmin)) {
     fail(`/plan?week=${weekStart}`, "closed");
   }
